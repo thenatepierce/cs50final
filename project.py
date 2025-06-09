@@ -1,15 +1,3 @@
-# ---Problem---
-
-# Your project must have a main function and three or more additional functions. At least three of those additional functions must be accompanied by tests that can be executed with pytest.
-
-    #Your main function must be in a file called project.py, which should be in the “root” (i.e., top-level folder) of your project.
-    #Your 3 required custom functions other than main must also be in project.py and defined at the same indentation level as main (i.e., not nested under any classes or functions).
-    #Your test functions must be in a file called test_project.py, which should also be in the “root” of your project. Be sure they have the same name as your custom functions, prepended with test_ (test_custom_function, for example, where custom_function is a function you’ve implemented in project.py).
-    #You are welcome to implement additional classes and functions as you see fit beyond the minimum requirement.
-
-#Implementing your project should entail more time and effort than is required by each of the course’s problem sets.
-#Any pip-installable libraries that your project requires must be listed, one per line, in a file called requirements.txt in the root of your project.
-
 import math
 import time
 import random
@@ -20,9 +8,8 @@ import re
 def main():
 
     colors = get_colors()
-    #print(colors)
     commander = get_commander(colors)
-    get_commander_info(commander)
+    print(get_commander_info(commander))
 
 
 def get_colors():
@@ -75,20 +62,41 @@ def get_commander(colors):
         j += 1
         time.sleep(1/10)
 
-    #print(sorted(commanders))
-    #print(len(commanders))
-    commander_choice = random.randrange(0, len(commanders))
+    valid_commander = False
+
+    while valid_commander != True:
+        commander_choice = random.randrange(0, len(commanders))
+        valid_commander = validate_commander(commanders[commander_choice])
+
     return commanders[commander_choice]
+
+def validate_commander(commander):
+    r_prefix = "https://api.scryfall.com/cards/search?format=json&include_extras=false&include_multilingual=false&include_variations=false&order=name&unique=cards&q="
+    url = r_prefix + commander
+    print(url)
+    r = requests.get(url)
+    response = r.json()
+    carddata = response['data'][0]
+    if carddata['legalities']['commander'] == "legal" and carddata['type_line'] != "Legendary Enchantment — Background":
+        return True
+    else:
+        print("Not-legal commander randomly chosen")
+        return False
 
 def get_commander_info(commander):
     print("\n" + commander + " has been chosen!  Querying Scryfall for details")
     r_prefix = "https://api.scryfall.com/cards/search?format=json&include_extras=false&include_multilingual=false&include_variations=false&order=name&unique=cards&q="
     url = r_prefix + commander
-    #print(url)
+    print(url)
     r = requests.get(url)
     response = r.json()
     carddata = response['data'][0]
-    cardname, edhrec, cardtype, scryfall_uri = carddata['name'], str(carddata['edhrec_rank']), carddata['type_line'], carddata['scryfall_uri']
+    cardname, cardtype, scryfall_uri = carddata['name'], carddata['type_line'], carddata['scryfall_uri']
+
+    try:
+        edhrec = str(carddata['edhrec_rank'])
+    except KeyError:
+        edhrec = "n/a"
 
     edhrecresponse = get_edhrec(scryfall_uri)
 
@@ -125,7 +133,7 @@ def get_commander_info(commander):
         Theme3: {edhrecresponse[2][0]}
         Decks: {edhrecresponse[2][1]}
         """
-        print(scryfall_output)
+        return scryfall_output
 
     elif faces == 2:
         color_identity = carddata['color_identity'][0] + carddata['color_identity'][1]
@@ -179,15 +187,25 @@ def get_commander_info(commander):
         Theme3: {edhrecresponse[2][0]}
             Decks: {edhrecresponse[2][1]}
         """
-        print(scryfall_output)
+        return scryfall_output
 
 def get_edhrec(scryfall_uri):
-    cardname = re.search(r'\d/([a-z|\-]*)', scryfall_uri).group(1)
-    url = "https://json.edhrec.com/pages/commanders/" + cardname + ".json"
-    r = requests.get(url)
+
+    card_error = "403"
+
+    while card_error == "403":
+        cardname = re.search(r'\d/([a-z|\-]*)', scryfall_uri).group(1)
+        print(cardname)
+        if cardname[:2] == "A-":
+            cardname = cardname[2:]
+        url = "https://json.edhrec.com/pages/commanders/" + cardname + ".json"
+        r = requests.get(url)
+        card_error = r.status_code
+
     response = r.json()
     themedata = response['panels']['taglinks']
     edhreclink = "https://edhrec.com/commanders/"+cardname
+
     return ([themedata[0]['value'], themedata[0]['count']],[themedata[1]['value'], themedata[1]['count']],[themedata[2]['value'], themedata[2]['count']], edhreclink)
 
 
