@@ -87,7 +87,6 @@ def get_commander_info(commander):
     print("\n" + commander + " has been chosen!  Querying Scryfall for details")
     r_prefix = "https://api.scryfall.com/cards/search?format=json&include_extras=false&include_multilingual=false&include_variations=false&order=name&unique=cards&q="
     url = r_prefix + commander
-    print(url)
     r = requests.get(url)
     response = r.json()
     carddata = response['data'][0]
@@ -207,7 +206,7 @@ def get_edhrec(scryfall_uri):
         card_error = r.status_code
         loop_attempt += 1
 
-response = r.json()
+    response = r.json()
     themedata = response['panels']['taglinks']
     edhreclink = "https://edhrec.com/commanders/"+cardname
 
