@@ -191,18 +191,23 @@ def get_commander_info(commander):
 
 def get_edhrec(scryfall_uri):
 
-    card_error = "403"
+    card_error = 403
+    cardname = re.search(r'\d/([a-z|\-]*)', scryfall_uri).group(1)
+    print(cardname)
+    if cardname[:2] == "A-":
+        cardname = cardname[2:]
+    edhrecnamelist = cardname.split("-")
+    loop_attempt = 1
+    max_loop = len(edhrecnamelist)
 
-    while card_error == "403":
-        cardname = re.search(r'\d/([a-z|\-]*)', scryfall_uri).group(1)
-        print(cardname)
-        if cardname[:2] == "A-":
-            cardname = cardname[2:]
-        url = "https://json.edhrec.com/pages/commanders/" + cardname + ".json"
+    while card_error == 403:
+        edhrecname = "-".join(edhrecnamelist[:loop_attempt])
+        url = "https://json.edhrec.com/pages/commanders/" + edhrecname + ".json"
         r = requests.get(url)
         card_error = r.status_code
+        loop_attempt += 1
 
-    response = r.json()
+response = r.json()
     themedata = response['panels']['taglinks']
     edhreclink = "https://edhrec.com/commanders/"+cardname
 
