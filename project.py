@@ -3,7 +3,49 @@ import time
 import random
 import requests
 import re
+import sys
 
+class edhrec:
+    def __init__(self, edhreclink, themedata):
+        self.edhreclink = edhreclink
+        self.themedata = themedata
+        #return ([themedata[0]['value'], themedata[0]['count']],[themedata[1]['value'], themedata[1]['count']],[themedata[2]['value'], themedata[2]['count']], edhreclink)
+        try:
+            theme1 = "Theme 1: " + themedata[0]['value']
+            count1 = "No. Decks: " + str(themedata[0]['count'])
+        except KeyError:
+            theme1 = ""
+            count1 = ""
+        try:
+            theme2 = "Theme 2: " + themedata[1]['value']
+            count2 = "No. Decks: " + str(themedata[1]['count'])
+        except KeyError:
+            theme2 = ""
+            count2 = ""
+        try:
+            theme3 = "Theme 3: " + themedata[2]['value']
+            count3 = "No. Decks: " + str(themedata[2]['count'])
+        except KeyError:
+            theme3 = ""
+            count3 = ""            
+        self.theme1 = theme1
+        self.theme2 = theme2
+        self.theme3 = theme3
+        self.count1 = count1
+        self.count2 = count2
+        self.count3 = count3
+
+    def __str__(self):
+        return f"""
+        ---EDHREC---
+        EDHRec Link: {self.edhreclink}
+        {self.theme1}
+            {self.count1}
+        {self.theme2}
+            {self.count2}
+        {self.theme3}
+            {self.count3}
+        """
 
 def main():
 
@@ -123,14 +165,7 @@ def get_commander_info(commander):
         Power/Toughness: {power}/{toughness}
         Scryfall URL: {scryfall_uri}
 
-        ---EDHREC---
-        EDHRec Link: {edhrecresponse[3]}
-        Theme1: {edhrecresponse[0][0]}
-        Decks: {edhrecresponse[0][1]}
-        Theme2: {edhrecresponse[1][0]}
-        Decks: {edhrecresponse[1][1]}
-        Theme3: {edhrecresponse[2][0]}
-        Decks: {edhrecresponse[2][1]}
+        {edhrecresponse}
         """
         return scryfall_output
 
@@ -177,14 +212,7 @@ def get_commander_info(commander):
 
         Scryfall URL: {scryfall_uri}
 
-        ---EDHREC---
-        EDHRec Link: {edhrecresponse[3]}
-        Theme1: {edhrecresponse[0][0]}
-            Decks: {edhrecresponse[0][1]}
-        Theme2: {edhrecresponse[1][0]}
-            Decks: {edhrecresponse[1][1]}
-        Theme3: {edhrecresponse[2][0]}
-            Decks: {edhrecresponse[2][1]}
+        {edhrecresponse}
         """
         return scryfall_output
 
@@ -200,6 +228,8 @@ def get_edhrec(scryfall_uri):
     max_loop = len(edhrecnamelist)
 
     while card_error == 403:
+        if loop_attempt > max_loop:
+            sys.exit("EDHRec Link not found...exiting")
         edhrecname = "-".join(edhrecnamelist[:loop_attempt])
         url = "https://json.edhrec.com/pages/commanders/" + edhrecname + ".json"
         r = requests.get(url)
@@ -209,9 +239,8 @@ def get_edhrec(scryfall_uri):
     response = r.json()
     themedata = response['panels']['taglinks']
     edhreclink = "https://edhrec.com/commanders/"+cardname
-
-    return ([themedata[0]['value'], themedata[0]['count']],[themedata[1]['value'], themedata[1]['count']],[themedata[2]['value'], themedata[2]['count']], edhreclink)
-
+    
+    return edhrec(edhreclink, themedata)
 
 if __name__ == "__main__":
     main()
