@@ -5,7 +5,151 @@ import requests
 import re
 import sys
 
-class edhrec:
+class cardretriever:
+    def __init__(self, carddata):
+        try:
+            carddata['card_faces'][0]['object'] == "card_face"
+            faces = 2
+        except KeyError:
+            faces = 1
+        self.faces = faces
+
+        try:
+            cardname = "Name: " + carddata['name']
+        except KeyError:
+            sys.exit("There was an issue finding the card name from Scryfall...exiting..")
+        self.cardname = cardname
+
+        cardtype, scryfall_uri = carddata['type_line'],carddata['scryfall_uri']
+        self.cardtype, self.scryfall_uri = cardtype, scryfall_uri
+        try:
+            edhrec = "EDHRec Rank: " + str(carddata['edhrec_rank'])
+        except KeyError:
+            edhrec = "EDHRec Rank: Not Found"
+
+        self.edhrec = edhrec
+        
+        if faces == 1:
+            try:
+                color_identity = "Color Identity: " + str(carddata['color_identity'])
+            except KeyError:
+                color_identity = "Color Identity: Not Found"
+            try:
+                manacost = "Mana Cost: " + carddata['mana_cost']
+            except KeyError:
+                manacost = "Mana Cost: Not Found"
+            try:
+                oracle = carddata['oracle_text']
+            except KeyError:
+                oracle = "Oracle Text Not Found" 
+            try:
+                powertoughness = "Power/Toughness: " + carddata['power'] + "/" + carddata['toughness']
+            except KeyError:
+                powertoughness = "Power/Toughness: Not Found"
+            self.color_identity = color_identity
+            self.mana_cost = manacost
+            self.oracle = oracle
+            self.powertoughness = powertoughness
+
+        elif faces == 2:
+            try:
+                color_identity_one = carddata['color_identity'][0]
+            except KeyError:
+                color_identity_one = ""
+            try:
+                color_identity_two = carddata['color_identity'][1]
+            except KeyError:
+                color_identity_two = ""
+            if color_identity_one == "" and color_identity_two == "":
+                color_identity = "Color Identity: Not Found"
+            else:
+                color_identity = "Color Identity: " + color_identity_one + color_identity_two
+            try:
+                mana_cost_one = "Mana Cost: " + carddata['card_faces'][0]['mana_cost']
+            except KeyError:
+                mana_cost_one = "Mana Cost: Not Found"
+            try:
+                mana_cost_two = "Mana Cost: " + carddata['card_faces'][1]['mana_cost']
+            except KeyError:
+                mana_cost_two = "Mana Cost: Not Found"
+            try:
+                card_type_one = carddata['card_faces'][0]['type_line']
+            except KeyError:
+                card_type_one = "Card Type: Not Found"
+            try:
+                card_type_two = carddata['card_faces'][1]['type_line']
+            except KeyError:
+                card_type_two = "Card Type: Not Found"
+            try:
+                oracle_one = carddata['card_faces'][0]['oracle_text']
+            except KeyError:
+                oracle_one = "Oracle Text: Not Found"
+            try:
+                oracle_two = carddata['card_faces'][1]['oracle_text']
+            except KeyError:
+                oracle_two = "Oracle Text: Not Found"            
+            try:
+                powertoughness_one = "Power/Toughness: " + carddata['card_faces'][0]['power'] + "/" + carddata['card_faces'][0]['toughness']
+            except KeyError:
+                powertoughness_one = "Power/Toughness: Not Found"       
+            try:
+                powertoughness_two = "Power/Toughness: " + carddata['card_faces'][1]['power'] + "/" + carddata['card_faces'][1]['toughness']
+            except KeyError:
+                powertoughness_two = "Power/Toughness: Not Found"
+
+            self.color_identity = color_identity
+            self.mana_cost_one = mana_cost_one
+            self.mana_cost_two = mana_cost_two
+            self.card_type_one = card_type_one
+            self.card_type_two = card_type_two
+            self.oracle_one = oracle_one
+            self.oracle_two = oracle_two
+            self.powertoughness_one = powertoughness_one
+            self.powertoughness_two = powertoughness_two
+        else:
+            sys.exit("An issue obtaining card data has occurred...exiting.")
+
+    def __str__(self):
+        if self.faces == 1:
+            return f"""
+            {self.cardname}
+            {self.edhrec}
+            {self.color_identity}
+            {self.mana_cost}
+            {self.cardtype}
+            {"-" * len(self.cardtype)}
+            {self.oracle}
+            {"-" * len(self.cardtype)}
+            {self.powertoughness}
+            {self.scryfall_uri}
+            """
+        if self.faces == 2:
+            return f"""
+            {self.cardname}
+            {self.edhrec}
+            {self.color_identity}
+            {self.cardtype}
+            
+            ---Side One---
+            {self.mana_cost_one}
+            {"-" * len(self.card_type_one)}
+            {self.oracle_one}
+            {"-" * len(self.card_type_one)}
+            {self.powertoughness_one}
+
+            ---Side Two---
+            {self.mana_cost_two}
+            {"-" * len(self.card_type_two)}
+            {self.oracle_one}
+            {"-" * len(self.card_type_two)}
+            {self.powertoughness_one}            
+
+            {self.scryfall_uri}
+            """
+        else:
+            sys.exit("An error has occurred retrieving card data...exiting.")
+
+class edhrecdata:
     def __init__(self, edhreclink, themedata):
         self.edhreclink = edhreclink
         self.themedata = themedata
@@ -132,95 +276,24 @@ def get_commander_info(commander):
     r = requests.get(url)
     response = r.json()
     carddata = response['data'][0]
-    cardname, cardtype, scryfall_uri = carddata['name'], carddata['type_line'], carddata['scryfall_uri']
-
-    try:
-        edhrec = str(carddata['edhrec_rank'])
-    except KeyError:
-        edhrec = "n/a"
-
+    scryfall_uri = carddata['scryfall_uri']
     edhrecresponse = get_edhrec(scryfall_uri)
 
-    try:
-        carddata['card_faces'][0]['object'] == "card_face"
-        faces = 2
-    except KeyError:
-        faces = 1
+    cardoutput = cardretriever(carddata)
 
-    if faces == 1:
-        color_identity = carddata['color_identity']
-        manacost = carddata['mana_cost']
-        oracle = carddata['oracle_text']
-        power = carddata['power']
-        toughness = carddata['toughness']
-        scryfall_output = f"""
-        Name: {cardname}
-        EDHRec Rank: {edhrec}
-        Color Identity: {color_identity}
-        Mana Cost: {manacost}
-        {cardtype}
-        {"-" * len(cardtype)}
-        {oracle}
-        {"-" * len(cardtype)}
-        Power/Toughness: {power}/{toughness}
-        Scryfall URL: {scryfall_uri}
+    totaloutput = f"""
+    {cardoutput}
 
-        {edhrecresponse}
-        """
-        return scryfall_output
+    {edhrecresponse}
+    """
 
-    elif faces == 2:
-        color_identity = carddata['color_identity'][0] + carddata['color_identity'][1]
-        face_one, face_two = carddata['card_faces'][0],carddata['card_faces'][1]
-        name_one, name_two = face_one['name'], face_two['name']
-        mana_cost_one = face_one['mana_cost']
-        try:
-            mana_cost_two = face_two['mana_cost']
-        except KeyError:
-            mana_cost_two = ""
-        oracle_one, oracle_two = face_one['oracle_text'], face_two['oracle_text']
-        cardtype_one, cardtype_two = face_one['type_line'], face_two['type_line']
-        power_one, toughness_one = face_one['power'], face_one['toughness']
-        try:
-            power_two = face_two['power']
-            toughness_two = face_two['toughness']
-        except KeyError:
-            power_two = ""
-            toughness_two = ""
-        scryfall_output = f"""
-        Name: {cardname}
-        EDHRec Rank: {edhrec}
-        Color Identity: {color_identity}
-        Card Type: {cardtype}
-        --- Side One---
-        Name: {name_one}
-        Mana Cost: {mana_cost_one}
-        {cardtype_one}
-        {"-" * len(cardtype_one)}
-        {oracle_one}
-        {"-" * len(cardtype_one)}
-        Power/Toughness: {power_one}/{toughness_one}
-
-        --- Side Two---
-        Name: {name_two}
-        Mana Cost: {mana_cost_two}
-        {cardtype_two}
-        {"-" * len(cardtype_two)}
-        {oracle_two}
-        {"-" * len(cardtype_two)}
-        Power/Toughness: {power_two}/{toughness_two}
-
-        Scryfall URL: {scryfall_uri}
-
-        {edhrecresponse}
-        """
-        return scryfall_output
+    return totaloutput
 
 def get_edhrec(scryfall_uri):
 
     card_error = 403
+    print(scryfall_uri)
     cardname = re.search(r'\d/([a-z|\-]*)', scryfall_uri).group(1)
-    print(cardname)
     if cardname[:2] == "A-":
         cardname = cardname[2:]
     edhrecnamelist = cardname.split("-")
@@ -229,18 +302,23 @@ def get_edhrec(scryfall_uri):
 
     while card_error == 403:
         if loop_attempt > max_loop:
-            sys.exit("EDHRec Link not found...exiting")
+            return f"EDHRec attempt failed at loop attempt {loop_attempt}"
         edhrecname = "-".join(edhrecnamelist[:loop_attempt])
         url = "https://json.edhrec.com/pages/commanders/" + edhrecname + ".json"
+        print(url)
         r = requests.get(url)
         card_error = r.status_code
+        print(card_error)
         loop_attempt += 1
 
+
     response = r.json()
-    themedata = response['panels']['taglinks']
+    try:
+        themedata = response['panels']['taglinks']
+    except KeyError:
+        return ""
     edhreclink = "https://edhrec.com/commanders/"+cardname
-    
-    return edhrec(edhreclink, themedata)
+    return edhrecdata(edhreclink, themedata)
 
 if __name__ == "__main__":
     main()
