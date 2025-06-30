@@ -1,3 +1,14 @@
+"""
+The overall worflow for the application:
+    1. main() is called
+    2. The get_colors() function is called to prompt the user for what possible colors they may want
+    3. Using the colors determined from get_colors(), the get_commander() function is called to randomly select a commander
+        3a. The validate_commander() is called to ensure that the selected commander is legal
+    4. Using the selected commander, get_commander_info() is called to populate the information regarding the commander
+        4a. get_edhrec() is called to query the edhrec info and format it using the edhrecdata class
+        4b. The data queried from scryfall is validated and formatted with the cardretriever class
+"""
+
 import math
 import time
 import random
@@ -7,6 +18,7 @@ import sys
 
 class cardretriever:
     def __init__(self, carddata):
+        # A card can have either 1 or 2 faces, which changes the way that Scryfall formats the json information.
         try:
             carddata['card_faces'][0]['object'] == "card_face"
             faces = 2
@@ -46,6 +58,7 @@ class cardretriever:
                 powertoughness = "Power/Toughness: " + carddata['power'] + "/" + carddata['toughness']
             except KeyError:
                 powertoughness = "Power/Toughness: Not Found"
+
             self.color_identity = color_identity
             self.mana_cost = manacost
             self.oracle = oracle
@@ -171,7 +184,8 @@ class edhrecdata:
             count3 = "No. Decks: " + str(themedata[2]['count'])
         except KeyError:
             theme3 = ""
-            count3 = ""            
+            count3 = ""
+
         self.theme1 = theme1
         self.theme2 = theme2
         self.theme3 = theme3
@@ -230,12 +244,16 @@ def get_commander(colors):
     r_prefix = "https://api.scryfall.com/cards/search?format=json&include_extras=false&include_multilingual=false&include_variations=false&order=name&unique=cards&page="
     r_suffix = "&q=is%3Acommander"
     url = r_prefix + str(j) + r_suffix + colors
-    r = requests.get(url)
+    try:
+        r = requests.get(url)
+    except requests.exceptions.RequestException:
+        sys.exit("There was an error querying Scryfall.  Exiting...")
 
     response = r.json()
     total_cards = response["total_cards"]
-    pages = math.ceil(int(total_cards) / 175)
 
+    # There are 175 cards per page, so this ensures that we pull data from every page in the search
+    pages = math.ceil(int(total_cards) / 175)
 
     while j < pages + 1:
         print("Querying Scryfall...")
@@ -250,6 +268,8 @@ def get_commander(colors):
 
     valid_commander = False
 
+    # Some cards can show up in our search that are not legal commanders (despite using the is:commander functionality in Scryfall), so the validate_commander()
+    # function ensures that a valid commander is chosen
     while valid_commander != True:
         commander_choice = random.randrange(0, len(commanders))
         valid_commander = validate_commander(commanders[commander_choice])
@@ -259,8 +279,10 @@ def get_commander(colors):
 def validate_commander(commander):
     r_prefix = "https://api.scryfall.com/cards/search?format=json&include_extras=false&include_multilingual=false&include_variations=false&order=name&unique=cards&q="
     url = r_prefix + commander
-    print(url)
-    r = requests.get(url)
+    try:
+        r = requests.get(url)
+    except requests.exceptions.RequestException:
+        sys.exit("There was an error querying Scryfall.  Exiting...")
     response = r.json()
     carddata = response['data'][0]
     if carddata['legalities']['commander'] == "legal" and carddata['type_line'] != "Legendary Enchantment — Background":
@@ -273,7 +295,10 @@ def get_commander_info(commander):
     print("\n" + commander + " has been chosen!  Querying Scryfall for details")
     r_prefix = "https://api.scryfall.com/cards/search?format=json&include_extras=false&include_multilingual=false&include_variations=false&order=name&unique=cards&q="
     url = r_prefix + commander
-    r = requests.get(url)
+    try:
+        r = requests.get(url)
+    except requests.exceptions.RequestException:
+        sys.exit("There was an error querying Scryfall.  Exiting...")
     response = r.json()
     carddata = response['data'][0]
     scryfall_uri = carddata['scryfall_uri']
@@ -291,8 +316,7 @@ def get_commander_info(commander):
 
 def get_edhrec(scryfall_uri):
 
-    card_error = 403
-    print(scryfall_uri)
+    
     cardname = re.search(r'\d/([a-z|\-]*)', scryfall_uri).group(1)
     if cardname[:2] == "A-":
         cardname = cardname[2:]
@@ -300,17 +324,18 @@ def get_edhrec(scryfall_uri):
     loop_attempt = 1
     max_loop = len(edhrecnamelist)
 
+    card_error = 403
     while card_error == 403:
         if loop_attempt > max_loop:
             return f"EDHRec attempt failed at loop attempt {loop_attempt}"
         edhrecname = "-".join(edhrecnamelist[:loop_attempt])
         url = "https://json.edhrec.com/pages/commanders/" + edhrecname + ".json"
-        print(url)
-        r = requests.get(url)
+        try:
+            r = requests.get(url)
+        except requests.exceptions.RequestException:
+            sys.exit("There was an error querying Scryfall.  Exiting...")
         card_error = r.status_code
-        print(card_error)
         loop_attempt += 1
-
 
     response = r.json()
     try:
